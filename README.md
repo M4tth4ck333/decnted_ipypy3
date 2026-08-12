@@ -1,82 +1,113 @@
-LICENSE
-=======
-
-Copyright 2013 Google Inc. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-Get Ready to Build Chrome Apps!
-===============================
-Chrome apps are written in HTML5, JavaScript, and CSS, just like web apps.
-But they look and behave more like native apps, and they have super-powerful capabilities,
-like the ability to interact with network and hardware devices, media tools, and much more.
-
-
-> This repository contains only the code for the Codelab. Please, make sense of this code by following the step-by-step tutorial in the [Chrome Apps docs site](http://developer.chrome.com/trunk/apps/app_codelab.html)
 <!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-    <title>Container & Pyodide HMI Gateway</title>
-    <!-- Pyodide Loader für Python in WebAssembly -->
+    <title>Pyodide WASM HMI Gateway</title>
+    <!-- Pyodide Core laden -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
     <style>
-        body { font-family: monospace; background: #121212; color: #00ffcc; padding: 20px; }
-        #output { background: #1e1e1e; border: 1px solid #333; padding: 15px; min-height: 150px; white-space: pre-wrap; }
-        button { background: #00ffcc; color: #121212; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { background: #00b38f; }
+        body {
+            font-family: monospace;
+            background-color: #0d1117;
+            color: #58a6ff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 20px;
+        }
+        h1 { font-size: 1.5rem; color: #f0f6fc; }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: #0d1117;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 10px;
+            font-family: monospace;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #2ea043; }
+        #output {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            min-height: 80px;
+            color: #7ee787;
+        }
     </style>
 </head>
 <body>
-    <h1>[DECENTRALIZED EDGE HMI]</h1>
-    <p>Status: Lade Python WebAssembly (Pyodide)...</p>
-    
-    <div id="output">Initialisiere Pyodide-Kernel...</div>
-    <button onclick="runPythonCode()">Python-Logik ausführen</button>
-
-    <script>
-        let pyodideInstance = null;
-
-        async function main() {
-            pyodideInstance = await loadPyodide();
-            document.getElementById('output').innerText = "Pyodide bereit!\nBereit für lokale Berechnungen, Media-Pipelines und IPython-Brücken.";
-        }
-        main();
-
-        async function runPythonCode() {
-            if (!pyodideInstance) {
-                alert("Pyodide lädt noch!");
-                return;
-            }
-            
-            // Hier läuft echter Python-Code direkt in der WASM-Laufzeitumgebung im Browser
-            let code = `
+    <div class="container">
+        <h1>WASM & Pyodide App-Sandbox</h1>
+        <p>Dieses Interface ersetzt alte Chrome-Packaged-Apps durch einen standardisierten WebAssembly-Container.</p>
+        
+        <label for="code">Python-Code eingeben:</label><br>
+        <textarea id="code">
 import sys
 import js
 
-# Beispiel: Python-Systeminfos & mathematische Simulation
 version = sys.version.split()[0]
-result = f"Python v{version} läuft lokal im WASM-Container.\\n"
-result += "Hardware-Schnittstellen: Verbunden mit Pyodide-WebSocket-Bridge."
-result
-            `;
-            
+output_msg = f"Erfolgreich ausgeführt in Python v{version} (WASM)\n"
+output_msg += "System-Status: Bereit für WebSocket-Bridge und Sensoren."
+output_msg
+        </textarea><br>
+        
+        <button onclick="runPython()">Code ausführen</button>
+
+        <h3>Ausgabe:</h3>
+        <div id="output">Initialisiere Python-Umgebung...</div>
+    </div>
+
+    <script>
+        let pyodide = null;
+
+        async function initPyodide() {
+            let outputDiv = document.getElementById("output");
             try {
-                let out = await pyodideInstance.runPythonAsync(code);
-                document.getElementById('output').innerText = out;
+                pyodide = await loadPyodide();
+                outputDiv.innerText = "Pyodide erfolgreich geladen! Bereit für Berechnungen.";
             } catch (err) {
-                document.getElementById('output').innerText = "Fehler: " + err;
+                outputDiv.innerText = "Fehler beim Laden von Pyodide: " + err;
+            }
+        }
+
+        initPyodide();
+
+        async function runPython() {
+            let outputDiv = document.getElementById("output");
+            let code = document.getElementById("code").value;
+            
+            if (!pyodide) {
+                outputDiv.innerText = "Pyodide ist noch nicht bereit.";
+                return;
+            }
+
+            try {
+                let result = await pyodide.runPythonAsync(code);
+                outputDiv.innerText = result;
+            } catch (err) {
+                outputDiv.innerText = "Python-Fehler:\n" + err;
             }
         }
     </script>
